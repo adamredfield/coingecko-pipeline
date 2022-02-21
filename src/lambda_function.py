@@ -10,26 +10,12 @@ coins_markets_url = '/coins/markets?vs_currency=usd&order=market_cap_desc&per_pa
 
 if __name__ == "__main__":
     coin_market_data = get_coin_market_data(base_url, coins_markets_url)
-    coin_market_data_df = response_to_df(
-        coin_market_data,
-        [
-            'id',
-            'symbol',
-            'name',
-            'current_price',
-            'high_24h',
-            'low_24h',
-            'market_cap',
-            'total_volume',
-            'last_updated'])
-    coin_market_data_df = lower_df_column(
-        coin_market_data_df, [
-            'id', 'symbol']).sort_values('id')
-    deduped_coin_market_data_df = deduper(
-        coin_market_data_df, subset=[
-            'id', 'high_24h'], sorted_column='id')
+    coin_market_data_df = response_to_df(coin_market_data, ['id', 'symbol', 'name', 'current_price', 'high_24h', 'low_24h', 'market_cap', 'total_volume', 'last_updated'])
+    coin_market_data_df = lower_df_column(coin_market_data_df, ['id', 'symbol']).sort_values('id')
+    deduped_coin_market_data_df = deduper(coin_market_data_df, subset=['id', 'high_24h'], grouped_column='id')
     deduped_coin_market_data_df.to_sql(
         name='market_data',
         con=rds_engine("coingecko_data"),
         if_exists='append',
         index=False)
+    logger.info(f'Successfully inserted {deduped_coin_market_data_df.shape[0]} records into the db.')

@@ -3,7 +3,7 @@ import logging
 import pandas as pd
 import requests
 from datetime import datetime
-from typing import Dict
+from typing import Dict, List
 
 
 logger = logging.getLogger()
@@ -32,18 +32,19 @@ class CoinGeckoAPI:
 
 @sleep_and_retry
 @limits(calls=40, period=ONE_MINUTE)
-def get_coin_market_data(base_url: str, endpoint: str) -> list[Dict]:
+def get_coin_market_data(base_url: str, endpoint: str) -> List[Dict]:
     """
     Retrieves paginated json response from the CoinGecko API. https://www.coingecko.com/en/api/documentation
     The API allows for 50 calls/minute but can vary. The limit decorator will limit API calls to 40 calls/minute.
     """
 
-    coin_market_data = []
-    coin_data = True
+    coin_market_data = [] # type: List[Dict]
     page = 1
-    while coin_data:
+    while True:
         coin_data = CoinGeckoAPI(base_url, endpoint).call_cg_api(
             params=f'?vs_currency=usd&order=market_cap_desc&per_page=250&page={page}&sparkline=false')
+        if len(coin_data) == 0:
+            break
         coin_market_data.extend(coin_data)
         page += 1
     logger.info(
@@ -51,10 +52,10 @@ def get_coin_market_data(base_url: str, endpoint: str) -> list[Dict]:
     return coin_market_data
 
 
-def response_to_df(response: list[dict], list_of_columns: list):
+def response_to_df(response: list[dict], column_list: list):
     """
     Converts json api response to a dataframe object.
-    Pass in a list of keys from the response to be converted to dataframe columns.
+    Pass in a list of keys from the response to retain in dataframe conversion.
 
     Returns
     -------
@@ -62,20 +63,21 @@ def response_to_df(response: list[dict], list_of_columns: list):
         Data columns are as follows:
 
         ========================================================================
-        id              (as `Object(str)``)
+        id              (as `Object(str)`)
         symbol          (as `Object(str)`)
         name            (as `Object(str)`)
-        current_price   (as `float`)
-        high_24h        (as `float`)
-        low_24h         (as `float`)
-        market_cap      (as `float`)
-        total_volume    (as `float`)
-        last_updated    (as `datetime`)
+        current_price   (as `float64`)
+        high_24h        (as `float64`)
+        low_24h         (as `float64`)
+        market_cap      (as `float64`)
+        total_volume    (as `float64`)
+        last_updated    (as `object(str)`)
         ========================================================================
-    """
+    """           
+    
 
     df = pd.json_normalize(response)
-    df = df[list_of_columns]
+    df = df[column_list]
     return df
 
 
@@ -91,22 +93,23 @@ def lower_df_column(df, column_names):
     return df
 
 
-def deduper(df, subset, sorted_column):
+def deduper(df, subset, grouped_column):
     """
     Identifies duplicates from the api response and returns a de-duped dataframe.
     The removed duplicates are logged in descending order by how many duplicates were removed.
     Args:
-    sorted_column (str): a string specifying which column you would like to display in the logs.
+    grouped_column (str): a string specifying which column you would like to group by and display in the logs.
     subset (list): a list of columns specifying which columns you want to dedupe on
     """
 
+    pd.set_option('display.max_rows', None)
     dupes = df.duplicated(subset=subset)
-    logger.info(f'duplicates found: {dupes.sum()}')
+    logger.info(f'Duplicates found: {dupes.sum()}')
     duped_df = df.loc[dupes]
-    dupe_counts_df = duped_df.groupby(sorted_column).size().reset_index(
+    dupe_counts_df = duped_df.groupby(grouped_column).size().reset_index(
         name='counts').sort_values('counts', ascending=False)
-    logger.info(
-        f'dupes removed, grouped by the {sorted_column} column: {dupe_counts_df}')
     df.drop_duplicates(subset=subset, keep='first', inplace=True)
-    logger.info(f'{df.shape[0]} records remaing after de-duping.')
+    logger.info(f'{df.shape[0]} records remaining after de-duping.')
+    logger.info(f'# duplicates removed by: {grouped_column}')
+    logger.info(dupe_counts_df)
     return df
