@@ -3,6 +3,7 @@ import logging
 import pandas as pd
 import requests
 from datetime import datetime
+from typing import Dict
 
 
 logger = logging.getLogger()
@@ -17,11 +18,11 @@ ONE_MINUTE = 60  # seconds
 
 class CoinGeckoAPI:
 
-    def __init__(self, cg_base_url, cg_endpoint):
+    def __init__(self, cg_base_url: str, cg_endpoint: str) -> None:
         self.cg_base_url = cg_base_url
         self.cg_endpoint = cg_endpoint
 
-    def call_cg_api(self, params=''):
+    def call_cg_api(self, params='') -> Dict:
         response = requests.get(
             f'{self.cg_base_url}{self.cg_endpoint}{params}')
         if response.status_code != 200:
@@ -31,7 +32,7 @@ class CoinGeckoAPI:
 
 @sleep_and_retry
 @limits(calls=40, period=ONE_MINUTE)
-def get_coin_market_data(base_url, endpoint):
+def get_coin_market_data(base_url: str, endpoint: str) -> list[dict]:
     """
     Retrieves paginated json response from the CoinGecko API. https://www.coingecko.com/en/api/documentation
     The API allows for 50 calls/minute but can vary. The limit decorator will limit API calls to 40 calls/minute.
@@ -50,15 +51,32 @@ def get_coin_market_data(base_url, endpoint):
     return coin_market_data
 
 
-def coin_market_data_to_df(response, list_of_columns):
+def response_to_df(response: list[dict], list_of_columns: list):
     """
     Converts json api response to a dataframe object.
     Pass in a list of keys from the response to be converted to dataframe columns.
+
+    Returns
+    -------
+    pd.DataFrame
+        Data columns are as follows:
+
+        ========================================================================
+        id              (as `Object(str)``)
+        symbol          (as `Object(str)`)
+        name            (as `Object(str)`)
+        current_price   (as `float`)
+        high_24h        (as `float`)
+        low_24h         (as `float`)
+        market_cap      (as `float`)
+        total_volume    (as `float`)
+        last_updated    (as `datetime`)
+        ========================================================================
     """
 
-    market_data_df = pd.json_normalize(response)
-    market_data_df = market_data_df[list_of_columns]
-    return market_data_df
+    df = pd.json_normalize(response)
+    df = df[list_of_columns]
+    return df
 
 
 def lower_df_column(df, column_names):

@@ -1,4 +1,4 @@
-from cg_helpers import get_coin_market_data, coin_market_data_to_df, lower_df_column, deduper
+from cg_helpers import get_coin_market_data, response_to_df, lower_df_column, deduper
 from rds_config import rds_engine
 import logging
 
@@ -10,7 +10,7 @@ coins_markets_url = '/coins/markets?vs_currency=usd&order=market_cap_desc&per_pa
 
 if __name__ == "__main__":
     coin_market_data = get_coin_market_data(base_url, coins_markets_url)
-    coin_market_data_df = coin_market_data_to_df(
+    coin_market_data_df = response_to_df(
         coin_market_data,
         [
             'id',

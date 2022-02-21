@@ -1,0 +1,11 @@
+boto3
+mypy
+pandas
+pep8
+pycoingecko
+PyMySQL
+pytest
+ratelimit
+requests
+SQLAlchemy
+pylint

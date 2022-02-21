@@ -6,7 +6,6 @@ import base64
 import json
 import os
 from botocore.exceptions import ClientError
-import logging
 from datetime import datetime
 import logging
 from sqlalchemy import create_engine
