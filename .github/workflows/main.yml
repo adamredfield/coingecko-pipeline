@@ -1,6 +1,6 @@
-name: Python CoinGecko App
+name: checks
 
-on: [commit]
+on: [push]
 
 jobs:
   build:
