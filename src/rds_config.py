@@ -12,7 +12,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
 
 logger = logging.getLogger()
-logging.basicConfig(filename=f'data{datetime.now()}.log', encoding='utf-8')
+logging.basicConfig(filename=f'logs/data_{datetime.now()}.log', encoding='utf-8')
 logger.setLevel(logging.INFO)
 
 os.environ['AWS_PROFILE'] = "adam-aws"

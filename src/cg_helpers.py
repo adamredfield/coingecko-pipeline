@@ -11,7 +11,7 @@ from datetime import datetime
 
 
 logger = logging.getLogger()
-logging.basicConfig(filename=f'data{datetime.now()}.log', encoding='utf-8')
+logging.basicConfig(filename=f'logs/data_{datetime.now()}.log', encoding='utf-8')
 logger.setLevel(logging.INFO)
 
 base_url = 'https://api.coingecko.com/api/v3/'

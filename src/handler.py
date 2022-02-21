@@ -1,6 +1,7 @@
 from cg_helpers import get_coin_market_data, response_to_df, lower_df_column, deduper, market_data_schema_check, add_date_fields
 from rds_config import rds_engine
 import logging
+import pandas as pd
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -36,14 +37,17 @@ if __name__ == "__main__":
     market_data_schema_check(coin_market_data, COLUMNS_TO_INCLUDE)
     coin_market_data_df = response_to_df(coin_market_data, COLUMNS_TO_INCLUDE)
     coin_market_data_df = add_date_fields(coin_market_data_df).rename(columns=DF_COLUMN_MAPPER)
+    pd.set_option('display.max_rows', None)
+    null_rows_to_drop = coin_market_data_df[coin_market_data_df['price_at_ingestion'].isnull() & coin_market_data_df['high_24h_price'].isnull() & coin_market_data_df['low_24h_price'].isnull() & coin_market_data_df['market_cap'].isnull()]
+    logger.info(f'Dropping {null_rows_to_drop.shape[0]} rows that fit criteria {null_rows_to_drop}')
+    # Only drop rows where all values in subset are null
+    coin_market_data_df = coin_market_data_df.dropna(subset=['price_at_ingestion','high_24h_price','low_24h_price','market_cap'],how='all')
     coin_market_data_df_ = lower_df_column(coin_market_data_df, ['coin_id', 'coin_symbol']).sort_values('coin_id')
-    # dedupe on coin_id and cg_date so that we ensure only one coin insert
-    # into db / day
+    # Dedupe on coin_id and cg_date so that we ensure only one coin insert into db / day
     deduped_coin_market_data_df = deduper(coin_market_data_df, subset=['coin_id', 'cg_date'], grouped_column='coin_id')
     deduped_coin_market_data_df.to_sql(
         name='market_data',
         con=rds_engine("coingecko_data"),
         if_exists='append',
         index=False)
-    logger.info(
-        f'Successfully inserted {deduped_coin_market_data_df.shape[0]} records into the db.')
+    logger.info(f'Successfully inserted {deduped_coin_market_data_df.shape[0]} records into the db.')
