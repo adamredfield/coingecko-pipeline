@@ -2,8 +2,12 @@ from ratelimit import limits, sleep_and_retry
 import logging
 import pandas as pd
 import requests
+import smtplib
 from datetime import datetime
 from typing import Dict, List
+from rds_config import get_secret
+from email.message import EmailMessage
+from datetime import datetime
 
 
 logger = logging.getLogger()
@@ -38,7 +42,7 @@ def get_coin_market_data(base_url: str, endpoint: str) -> List[Dict]:
     The API allows for 50 calls/minute but can vary. The limit decorator will limit API calls to 40 calls/minute.
     """
 
-    coin_market_data = [] # type: List[Dict]
+    coin_market_data = []  # type: List[Dict]
     page = 1
     while True:
         coin_data = CoinGeckoAPI(base_url, endpoint).call_cg_api(
@@ -73,11 +77,16 @@ def response_to_df(response: list[dict], column_list: list):
         total_volume    (as `float64`)
         last_updated    (as `object(str)`)
         ========================================================================
-    """           
-    
+    """
 
     df = pd.json_normalize(response)
     df = df[column_list]
+    return df
+
+
+def add_date_fields(df):
+    df['insert_time'] = datetime.utcnow()
+    df['cg_date'] = datetime.utcnow().date()
     return df
 
 
@@ -113,3 +122,27 @@ def deduper(df, subset, grouped_column):
     logger.info(f'# duplicates removed by: {grouped_column}')
     logger.info(dupe_counts_df)
     return df
+
+
+def market_data_schema_check(market_data, columns):
+    # Sends out an email alert if schema changes from what is expected.
+    gmail_user = get_secret()["gmail_un"]
+    gmail_pw = get_secret()["gmail_pw"]
+    valid_schema = set(columns)
+    if not valid_schema.issubset(market_data[0].keys()):
+        missing_keys = [key for key in valid_schema if key not in market_data[0].keys()]
+        msg = EmailMessage()
+        msg.set_content(
+            f'The CoinGecko API is not giving the expected response. The following keys are missing: {missing_keys}. Look into this here: https://www.coingecko.com/en/api/documentation')
+
+        msg['Subject'] = 'CoinGecko API Schema Alert!'
+        msg['From'] = gmail_user
+        msg['To'] = gmail_user
+        try:
+            smtp_server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+            smtp_server.login(gmail_user, gmail_pw)
+            smtp_server.send_message(msg)
+            smtp_server.close()
+            logger.info("Email sent successfully!")
+        except Exception as ex:
+            logger.error("Something went wrong….", ex)
