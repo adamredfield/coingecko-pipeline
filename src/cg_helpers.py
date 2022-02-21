@@ -32,7 +32,7 @@ class CoinGeckoAPI:
 
 @sleep_and_retry
 @limits(calls=40, period=ONE_MINUTE)
-def get_coin_market_data(base_url: str, endpoint: str) -> list[dict]:
+def get_coin_market_data(base_url: str, endpoint: str) -> list[Dict]:
     """
     Retrieves paginated json response from the CoinGecko API. https://www.coingecko.com/en/api/documentation
     The API allows for 50 calls/minute but can vary. The limit decorator will limit API calls to 40 calls/minute.
