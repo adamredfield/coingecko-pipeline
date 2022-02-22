@@ -1,13 +1,13 @@
 from ratelimit import limits, sleep_and_retry
 import logging
 import pandas as pd
-import requests
 import smtplib
 from datetime import datetime
 from typing import Dict, List
 from rds_config import get_secret
 from email.message import EmailMessage
 from datetime import datetime
+from cg_api import CoinGeckoAPI
 
 
 logger = logging.getLogger()
@@ -18,20 +18,6 @@ base_url = 'https://api.coingecko.com/api/v3/'
 coins_markets_url = '/coins/markets?vs_currency=usd&order=id_asc&per_page=250&page=1&sparkline=false'
 
 ONE_MINUTE = 60  # seconds
-
-
-class CoinGeckoAPI:
-
-    def __init__(self, cg_base_url: str, cg_endpoint: str) -> None:
-        self.cg_base_url = cg_base_url
-        self.cg_endpoint = cg_endpoint
-
-    def call_cg_api(self, params='') -> Dict:
-        response = requests.get(
-            f'{self.cg_base_url}{self.cg_endpoint}{params}')
-        if response.status_code != 200:
-            raise Exception(response.raise_for_status)
-        return response.json()
 
 
 @sleep_and_retry
